@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telecom AI Assistant</title>
+    <!-- Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 h-screen flex flex-col justify-between">
+
+    <!-- Header -->
+    <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex items-center justify-between shadow-md">
+        <div class="flex items-center space-x-3">
+            <div class="h-3 w-3 bg-emerald-500 rounded-full animate-pulse"></div>
+            <h1 class="text-xl font-bold tracking-wide">Telecom NLU Assistant</h1>
+        </div>
+        <span id="server-status" class="text-xs bg-emerald-900/50 text-emerald-400 border border-emerald-700 px-3 py-1 rounded-full">Connected</span>
+    </header>
+
+    <!-- Chat Messages Container -->
+    <main id="chat-container" class="flex-1 overflow-y-auto p-6 space-y-4 max-w-4xl w-full mx-auto">
+        <!-- Welcome Message -->
+        <div class="flex items-start space-x-3">
+            <div class="bg-indigo-600 text-white font-bold rounded-full h-8 w-8 flex items-center justify-center shrink-0">AI</div>
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 max-w-lg shadow-sm">
+                <p class="text-sm">Hello! I am your telecom assistant. How can I help you today? (Try asking about balance, recharges, data packs, or network issues!)</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Input Footer -->
+    <footer class="bg-slate-800 border-t border-slate-700 p-4 shadow-lg">
+        <form id="chat-form" class="max-w-4xl mx-auto flex gap-3">
+            <input 
+                type="text" 
+                id="user-input" 
+                placeholder="Type your message here (e.g. recharge 299 on 9874147814)..." 
+                autocomplete="off"
+                class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition"
+            >
+            <button 
+                type="submit" 
+                class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-3 rounded-xl transition shadow-md flex items-center justify-center">
+                Send
+            </button>
+        </form>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        const chatContainer = document.getElementById('chat-container');
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const sessionId = 'web-user-' + Math.random().toString(36).substring(2, 9);
+
+        // Auto-scroll to bottom of chat
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Append message bubble
+        function appendMessage(sender, text, metadata = null) {
+            const isUser = sender === 'user';
+            const wrapperDiv = document.createElement('div');
+            wrapperDiv.className = `flex items-start space-x-3 ${isUser ? 'justify-end' : ''}`;
+
+            let metaHtml = '';
+            if (!isUser && metadata) {
+                metaHtml = `
+                    <div class="mt-2 pt-2 border-t border-slate-700/60 text-xs text-slate-400 flex flex-wrap gap-2">
+                        <span class="bg-slate-900 px-2 py-0.5 rounded text-indigo-400 font-medium">Intent: ${metadata.intent}</span>
+                        <span class="bg-slate-900 px-2 py-0.5 rounded text-emerald-400 font-medium">Confidence: ${(metadata.confidence * 100).toFixed(0)}%</span>
+                        ${metadata.entities && metadata.entities.length > 0 ? `<span class="bg-slate-900 px-2 py-0.5 rounded text-amber-400 font-medium">Entities: ${metadata.entities.map(e => `${e.type}: ${e.value}`).join(', ')}</span>` : ''}
+                        <span class="text-slate-500 ml-auto">${metadata.latency}ms</span>
+                    </div>
+                `;
+            }
+
+            wrapperDiv.innerHTML = `
+                ${!isUser ? '<div class="bg-indigo-600 text-white font-bold rounded-full h-8 w-8 flex items-center justify-center shrink-0">AI</div>' : ''}
+                <div class="${isUser ? 'bg-indigo-600 text-white' : 'bg-slate-800 border border-slate-700 text-slate-100'} rounded-2xl p-4 max-w-lg shadow-sm">
+                    <p class="text-sm leading-relaxed">${escapeHtml(text)}</p>
+                    ${metaHtml}
+                </div>
+                ${isUser ? '<div class="bg-slate-700 text-slate-300 font-bold rounded-full h-8 w-8 flex items-center justify-center shrink-0">You</div>' : ''}
+            `;
+
+            chatContainer.appendChild(wrapperDiv);
+            scrollToBottom();
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        // Handle form submission
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            appendMessage('user', text);
+            userInput.value = '';
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId, message: text, debug: false })
+                });
+
+                if (!response.ok) throw new Error('Server error');
+
+                const data = await response.json();
+                appendMessage('bot', data.reply, {
+                    intent: data.state.intent,
+                    confidence: data.state.top_k.find(k => k[0] === data.state.intent)?.[1] || 1.0,
+                    entities: data.entities,
+                    latency: data.latency_ms.total
+                });
+            } catch (error) {
+                appendMessage('bot', '⚠️ Error: Could not connect to the backend server. Make sure FastAPI is running.');
+            }
+        });
+    </script>
+</body>
+</html>

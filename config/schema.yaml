@@ -1,0 +1,26 @@
+intents:
+  - check_balance
+  - recharge_prepaid
+  - pay_bill
+  - change_plan
+  - activate_roaming
+  - report_network_issue
+  - complaint_status
+  - report_lost_sim
+  - request_agent
+  - faq_general
+  - out_of_scope
+  - nlu_fallback
+entities:
+  - phone_number
+  - amount
+  - data_quantity
+  - ticket_id
+  - sim_number
+  - date
+  - plan_name
+  - country
+  - payment_method
+  - service_type
+  - issue_type
+  - location

@@ -1,0 +1,8 @@
+confidence:
+  t_hi: 0.70
+  t_lo: 0.40
+fuzzy_matching:
+  min_score: 88
+session:
+  timeout_minutes: 5
+  max_fail_count: 2

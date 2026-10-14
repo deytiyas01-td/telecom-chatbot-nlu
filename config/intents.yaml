@@ -1,0 +1,9 @@
+intents:
+  recharge_prepaid:
+    required_slots: [phone_number, amount_or_plan, payment_method]
+    auth_required: true
+    confirm: true
+    prompts:
+      phone_number: "Which mobile number would you like to recharge?"
+      amount_or_plan: "How much would you like to recharge, or which plan?"
+      payment_method: "How would you like to pay: UPI, card, or net banking?"
